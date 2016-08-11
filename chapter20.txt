@@ -1,20 +1,20 @@
-# 20 Error Handling
+# 20 에러 핸들링(Error Handling)
 
-*Error handling* is the process of responding to and recovering from error conditions in your program. Swift provides first-class support for throwing, catching, propagating, and manipulating recoverable errors at runtime.
+*에러 핸들링*은 당신의 프로그램에서 에러 조건으로부터 복구, 응답하는 과정입니다. Swift는 런타임에서 복구 가능한 에러를 던지기(throwing), 캐치(catching), 전파(propagating), 조작(manipulating)에 대한 일급 지원(first-class support)을 제공합니다.
 
-Some operations aren’t guaranteed to always complete execution or produce a useful output. Optionals are used to represent the absence of a value, but when an operation fails, it’s often useful to understand what caused the failure, so that your code can respond accordingly.
+몇몇 연산은 항상 완벽한 실행 또는 유용한 아웃풋을 내보내는 것이 보장되지 않습니다. 옵셔널은 값의 부재를 나타내기 위해 사용되지만, 연산이 실패할 경우, 실패의 원인을 이해하는 것이 당신의 코드가 그에 맞춰 대응하는데 종종 유용합니다.
 
-As an example, consider the task of reading and processing data from a file on disk. There are a number of ways this task can fail, including the file not existing at the specified path, the file not having read permissions, or the file not being encoded in a compatible format. Distinguishing among these different situations allows a program to resolve some errors and to communicate to the user any errors it can’t resolve.
+예를 들어, 디스크에서 파일을 읽고 처리하는 일을 고려해봅시다. 이 작업이 실패할 수 있는 원인은 파일이 특정 폴더에 존재하지 않거나, 파일 읽기 권한이 없거나, 호환되지 않는 포맷으로 인코드 되는 경우 등 많은 것들이 있습니다. 이런 다른 상황들을 구별하는 것은 프로그램이 몇몇 에러를 해결하고, 해결할 수 없는 어떤 에러에 대해 사용자와 소통하는 것을 허용합니다.
 
 > NOTE
 >
-> Error handling in Swift interoperates with error handling patterns that use the `NSError` class in Cocoa and Objective-C. For more information about this class, see [Error Handling](https://developer.apple.com/library/ios/documentation/Swift/Conceptual/BuildingCocoaApps/AdoptingCocoaDesignPatterns.html#//apple_ref/doc/uid/TP40014216-CH7-ID10) in [Using Swift with Cocoa and Objective-C (Swift 2.2)](https://developer.apple.com/library/ios/documentation/Swift/Conceptual/BuildingCocoaApps/index.html#//apple_ref/doc/uid/TP40014216).
+> Swift에서 에러 핸들링은 Cocoa와 Objective-C에서 `NSError` 클래스를 사용하는 에러 핸들링 패턴과 상호운용됩니다. 이 클래스에 대한 더 많은 정보는 [Error Handling](https://developer.apple.com/library/ios/documentation/Swift/Conceptual/BuildingCocoaApps/AdoptingCocoaDesignPatterns.html#//apple_ref/doc/uid/TP40014216-CH7-ID10)과 [Using Swift with Cocoa and Objective-C (Swift 2.2)](https://developer.apple.com/library/ios/documentation/Swift/Conceptual/BuildingCocoaApps/index.html#//apple_ref/doc/uid/TP40014216)를 참고하세요.
 
-## Representing and Throwing Errors
+## 에러 던지기와 나타내기(Representing and Throwing Errors)
 
-In Swift, errors are represented by values of types that conform to the `ErrorType` protocol. This empty protocol indicates that a type can be used for error handling.
+Swift에서 에러들은 `ErrorType` 프로토콜에 일치하는 타입의 값들로 표현됩니다. 이 빈 프로토콜은 에러 핸들링에 사용될 수 있는 타입을 가리킵니다.
 
-Swift enumerations are particularly well suited to modeling a group of related error conditions, with associated values allowing for additional information about the nature of an error to be communicated. For example, here’s how you might represent the error conditions of operating a vending machine inside a game:
+Swift 열거형은 특히 소통되는 에러의 본질에 대한 추가적인 정보를 허용하는 관련된 값으로, 연관된 에러 조건들의 그룹을 모델링하는데 적합합니다. 예를 들어, 여기는 게임에서 자판기가 동작하는 에러 조건을 나타낼 수 있을지 모르는 방법이 있습니다.
 
 ```swift
 enum VendingMachineError: ErrorType {
@@ -24,27 +24,27 @@ enum VendingMachineError: ErrorType {
 }
 ```
 
-Throwing an error lets you indicate that something unexpected happened and the normal flow of execution can’t continue. You use a `throw` statement to throw an error. For example, the following code throws an error to indicate that five additional coins are needed by the vending machine:
+에러를 던지는 것은 당신으로 하여금 기대하지 않던 어떤 것이 발생하는 것을 가리키고, 실행의 일반적인 흐름이 계속되지 못하도록 합니다. 당신은 에러를 던지는데, `throw` 구문을 사용할 수 있습니다. 예를 들어, 다음의 코드는 자판기가 5개의 추가적인 동전이 필요함을 가리키는 에러를 던집니다.
 
 ```swift
 throw VendingMachineError.InsufficientFunds(coinsNeeded: 5)
 ```
 
-## Handling Errors
+## 에러 다루기(Handling Errors)
 
-When an error is thrown, some surrounding piece of code must be responsible for handling the error—for example, by correcting the problem, trying an alternative approach, or informing the user of the failure.
+에러가 던져질 때, 몇몇 코드의 둘러싸인 조각이 에러를 다루는 책임을 집니다. -예를 들어, 문제를 수정함으로서, 대안의 접근을 시도함으로서, 실패를 사용자에게 알림으로서 등이 있습니다.
 
-There are four ways to handle errors in Swift. You can propagate the error from a function to the code that calls that function, handle the error using a `do`-`catch` statement, handle the error as an optional value, or assert that the error will not occur. Each approach is described in a section below.
+Swift에는 에러를 다루는 네 가지 방법이 있습니다. 당신은 에러를 함수로부터 함수를 호출하는 코드로 에러를 전파할 수 있고, 에러를 `do`-`catch` 문을 사용해 다룰 수 있으며, 에러를 옵셔널 값으로서 다룰 수 있으며, 또는 에러를 발생하지 않은 것으로 주장할 수 있습니다. 각각의 접근은 아래의 섹션에 설명되어 있습니다.
 
-When a function throws an error, it changes the flow of your program, so it’s important that you can quickly identify places in your code that can throw errors. To identify these places in your code, write the `try` keyword—or the `try?` or `try!` variation—before a piece of code that calls a function, method, or initializer that can throw an error. These keywords are described in the sections below.
+함수가 에러를 던질 때, 당신의 프로그램의 흐름을 바꿉니다. 그래서, 당신의 코드에서 에러를 던질 수 있는 위치를 빨리 식별할 수 있는 것이 중요합니다. 당신의 코드에서 이들 위치를 식별하기 위해, 에러를 던질 수 있는 함수나 메서드 또는 이니셜라이저 코드의 조각 앞에 `try` 키워드-혹은 `try?` 혹은 `try!` 변수-를 작성하세요. 이들 키워드는 아래의 섹션들에 기술되어 있습니다.
 
 > NOTE
 >
-> Error handling in Swift resembles exception handling in other languages, with the use of the `try`, `catch` and`throw` keywords. Unlike exception handling in many languages—including Objective-C—error handling in Swift does not involve unwinding the call stack, a process that can be computationally expensive. As such, the performance characteristics of a `throw` statement are comparable to those of a `return` statement.
+> Swift에서 에러 다루기는 `try`, `catch`와 `throw` 키워드를 사용하는 다른 언어에서의 예외 다루기(exception handling)와 닮았습니다. 예외 다루기를 하는 많은 언어(Objective-C를 포함해서)와 같지 않게, Swift의 에러 다루기는 계산이 비쌀 수 있는 과정인, 스택 호출 되감기를 수반하지 않습니다. 보통 말하는, `throw` 구문의 성능 특징은 `return` 구문의 그것과 비교할만 합니다. 
 
-### Propagating Errors Using Throwing Functions
+### 던지기 함수를 사용한 에러 전파(Propagating Errors Using Throwing Functions)
 
-To indicate that a function, method, or initializer can throw an error, you write the `throws` keyword in the function’s declaration after its parameters. A function marked with `throws` is called a *throwing function*. If the function specifies a return type, you write the `throws` keyword before the return arrow (`->`).
+에러를 던질 수 있는 함수, 메서드 또는 이니셜라이저를 가리키기 위해, 당신은 함수의 선언에, 파라메터들의 뒤에 `throws` 키워드를 작성합니다. `throws`로 마킹된 함수는 *던지기 함수(throwing function)*로 호출됩니다. 만약 함수가 리턴 타입을 명시한다면, 당신은 리턴 화살표(`->`) 앞에 `throws` 키워드를 작성합니다.
 
 ```swift
 func canThrowErrors() throws -> String
@@ -52,13 +52,13 @@ func canThrowErrors() throws -> String
 func cannotThrowErrors() -> String
 ```
 
-A throwing function propagates errors that are thrown inside of it to the scope from which it’s called.
+던지기 함수는 그것이 호출된 곳으로부터 scope으로 그것의 내부로 던져진 에러들을 전파합니다.
 
 > NOTE
 >
-> Only throwing functions can propagate errors. Any errors thrown inside a nonthrowing function must be handled inside the function.
+> 던지기 함수만이 에러를 전파할 수 있습니다. 비던지기 함수 내부에서 던져진 어떤 에러들은 반드시 함수 내부에서 다루어져야만 합니다.
 
-In the example below, the `VendingMachine` class has a `vend(itemNamed:)` method that throws an appropriate`VendingMachineError` if the requested item is not available, is out of stock, or has a cost that exceeds the current deposited amount:
+아래의 예제에서, `VendingMachine` 클래스는 만약 요청된 아이템이 사용가능하지 않거나, 재고가 없을 때, 또는 현재 잔금을 초과하는 가격일 때, 적절한 `VendingMachineError `를 던지는 `vend(itemNamed:)` 메서드를 가지고 있습니다.
 
 ```swift
 struct Item {
@@ -101,9 +101,9 @@ class VendingMachine {
 }
 ```
 
-The implementation of the `vend(itemNamed:)` method uses `guard` statements to exit the method early and throw appropriate errors if any of the requirements for purchasing a snack aren’t met. Because a `throw`statement immediately transfers program control, an item will be vended only if all of these requirements are met.
+`vend(itemNamed:)` 메서드의 구현은 만약 스낵을 구입하는 요구사항 중 어떤 것이 맞지 않는다면, 메서드를 일찍 나가서 적절한 에러를 던지기 위해 `guard` 구문을 사용합니다. `throw` 구문이 즉시 프로그램 컨트롤을 이동시키기에, 아이템은 모든 요구사항이 맞는 경우에만 자판기에서 나올 것입니다.
 
-Because the `vend(itemNamed:)` method propagates any errors it throws, any code that calls this method must either handle the errors—using a `do`-`catch` statement, `try?`, or `try!`—or continue to propagate them. For example, the `buyFavoriteSnack(_:vendingMachine:)` in the example below is also a throwing function, and any errors that the `vend(itemNamed:)` method throws will propagate up to the point where the`buyFavoriteSnack(_:vendingMachine:)` function is called.
+`vend(itemNamed:)` 메서드가 그것이 던지는 어떠한 에러라도 전파시키기 때문에, 이 메서드를 호출하는 어떤 코드라도 -`do`-`catch` 구문이나 `try?` 혹은 `try!`를 사용해서- 이 에러들을 다루거나 계속해서 에러들을 전파시켜야만 합니다. 예를 들어, 아래의 예제에서 `buyFavoriteSnack(_:vendingMachine:)`는 또한 던지기 함수이고, `vend(itemNamed:)` 메서드가 던지는 어떠한 에러라도 `buyFavoriteSnack(_:vendingMachine:)` 함수가 호출된 곳으로 전파될 것입니다.
 
 ```swift
 let favoriteSnacks = [
@@ -111,15 +111,16 @@ let favoriteSnacks = [
     "Bob": "Licorice",
     "Eve": "Pretzels",
 ]
+
 func buyFavoriteSnack(person: String, vendingMachine: VendingMachine) throws {
     let snackName = favoriteSnacks[person] ?? "Candy Bar"
     try vendingMachine.vend(itemNamed: snackName)
 }
 ```
 
-In this example, the `buyFavoriteSnack(_:vendingMachine:)` function looks up a given person’s favorite snack and tries to buy it for them by calling the `vend(itemNamed:)` method. Because the `vend(itemNamed:)` method can throw an error, it’s called with the `try` keyword in front of it.
+이 예제에서, `buyFavoriteSnack(_:vendingMachine:)` 함수는 주어진 사람의 가장 좋아하는 스낵을 찾고, `vend(itemNamed:)` 메서드를 호출함으로서 그것들을 사는 것을 시도합니다. `vend(itemNamed:)` 메서드가 에러를 던질 수 있기에, 앞에 `try` 키워드를 붙여서 호출해야 합니다.
 
-Throwing initializers can propagate errors in the same way as throwing functions. For example, the initializer for the `PurchasedSnack` structure in the listing below calls a throwing function as part of the initialization process, and it handles any errors that it encounters by propagating them to its caller.
+던지기 이니셜라이저는 에러들을 던지기 함수와 같은 방식으로 전파할 수 있습니다. 예를 들어, 아래에 리스트되어 있는 `PurchasedSnack` 구조체의 이니셜라이저는 던지기 함수를 초기화 과정의 일부로서 호출합니다. 그리고 그것의 호출자로부터 그것들을 전파함으로서 맞닥드려 어떠한 에러라도 다룹니다.
 
 ```swift
 struct PurchasedSnack {
@@ -131,11 +132,11 @@ struct PurchasedSnack {
 }
 ```
 
-### Handling Errors Using Do-Catch
+### Do-Catch를 사용한 에러다루기(Handling Errors Using Do-Catch)
 
-You use a `do`-`catch` statement to handle errors by running a block of code. If an error is thrown by the code in the `do` clause, it is matched against the `catch` clauses to determine which one of them can handle the error.
+코드 블록을 실행함으로서 에러를 다루기 위해  `do`-`catch`를 사용합니다. 만약 에러가 `do` 클로저 안에서 코드에 의해 던져졌다면, 그들 중 에러를 다룰 것을 결정하기 위해 대응되는 `catch` 클로저에서 매칭시킵니다.
 
-Here is the general form of a `do`-`catch` statement:
+여기에 `do`-`catch` 구문의 일반적인 형태가 있습니다.
 
 ```swift
 do {
@@ -148,9 +149,9 @@ do {
 }
 ```
 
-You write a pattern after `catch` to indicate what errors that clause can handle. If a `catch` clause doesn’t have a pattern, the clause matches any error and binds the error to a local constant named `error`. For more information about pattern matching, see [Patterns](https://developer.apple.com/library/ios/documentation/Swift/Conceptual/Swift_Programming_Language/Patterns.html#//apple_ref/doc/uid/TP40014097-CH36-ID419).
+어떤 에러를 클로저에서 다룰 수 있는지 가리키기 위해 `catch` 이후에 패턴을 작성할 수 있습니다. 만약 `catch` 클로저가 패턴을 갖지 않는 경우, 클로저는 어떠한 에러와도 매칭되지 않는 것이고, `error`라는 로컬 상수로 에러를 묶습니다. 패턴 매칭에 대한 더 많은 정보는 [Patterns](https://developer.apple.com/library/ios/documentation/Swift/Conceptual/Swift_Programming_Language/Patterns.html#//apple_ref/doc/uid/TP40014097-CH36-ID419)를 참고하세요.
 
-The `catch` clauses don’t have to handle every possible error that the code in its `do` clause can throw. If none of the `catch` clauses handle the error, the error propagates to the surrounding scope. However, the error must be handled by *some* surrounding scope—either by an enclosing `do`-`catch` clause that handles the error or by being inside a throwing function. For example, the following code handles all three cases of the`VendingMachineError` enumeration, but all other errors have to be handled by its surrounding scope:
+`catch` 클로저는 그것의 `do` 클로저가 던지는 모든 가능한 에러를 다룰 필요는 없습니다. 만약 `catch` 클로저에서 에러를 다룰 수 없다면, 에러는 둘러싼 범위로 전파됩니다. 하지만, 에러는 주변의 어떤 범위에서 다루어져야만 합니다.- 에러를 다루는 `do`-`catch` 클로저에 의해서 감싸짐으로서 아니면, 던지기 함수 내부에 그것을 넣음으로써. 예를 들어, 다음의 코드는 `VendingMachineError` 열거형의 모든 세 경우를 다룹니다. 하지만 모든 다른 에러들은 둘러싼 범위에서 다루어져야만 합니다.
 
 ```swift
 var vendingMachine = VendingMachine()
@@ -167,11 +168,11 @@ do {
 // Prints "Insufficient funds. Please insert an additional 2 coins."
 ```
 
-In the above example, the `buyFavoriteSnack(_:vendingMachine:)` function is called in a `try` expression, because it can throw an error. If an error is thrown, execution immediately transfers to the `catch` clauses, which decide whether to allow propagation to continue. If no error is thrown, the remaining statements in the`do` statement are executed.
+위의 예제에서, `buyFavoriteSnack(_:vendingMachine:)` 함수는 그것이 에러를 던질 수 있기 때문에 `try` 표현식에서 호출되었습니다. 만약 에러가 던져진다면, 실행은 즉시 계속해서 전파를 허용하는 것을 결정하는 `catch` 클로저로 옮겨집니다. 만약 에러가 발생하지 않는다면, `do` 구문에서 나머지 구문들이 수행됩니다.
 
-### Converting Errors to Optional Values
+### 에러를 옵셔널 값으로 전환하기(Converting Errors to Optional Values)
 
-You use `try?` to handle an error by converting it to an optional value. If an error is thrown while evaluating the`try?` expression, the value of the expression is `nil`. For example, in the following code `x` and `y` have the same value and behavior:
+`try?`를 에러를 옵셔널 값으로 전환함으로서 에러를 다루기 위해 사용할 수 있습니다. 만약 `try?` 표현식을 평가하던 도중에 에러가 던져진다면, 표현식의 값은 `nil`입니다. 예를 들어, 다음의 코드에서, `x`와 `y`는 같은 값과 행위를 가집니다.
 
 ```swift
 func someThrowingFunction() throws -> Int {
@@ -188,9 +189,9 @@ do {
 }
 ```
 
-If `someThrowingFunction()` throws an error, the value of `x` and `y` is `nil`. Otherwise, the value of `x` and `y` is the value that the function returned. Note that `x` and `y` are an optional of whatever type `someThrowingFunction()`returns. Here the function returns an integer, so `x` and `y` are optional integers.
+만약 `someThrowingFunction()`이 에러를 던진다면, `x`와 `y`의 값은 `nil`이 될 것입니다. 그렇지 않으면 `x`와 `y`의 값은 함수가 리턴하는 값입니다. `x`와 `y`는 `someThrowingFunction()`이 돌려주는 타입의 옵셔널임을 명심하세요. 여기서 그 함수가 integer를 리턴하므로, `x`와 `y`의 값은 옵셔널 integer입니다.
 
-Using `try?` lets you write concise error handling code when you want to handle all errors in the same way. For example, the following code uses several approaches to fetch data, or returns `nil` if all of the approaches fail.
+만약 당신이 모든 에러를 같은 방식으로 다루기를 원할 때, 축약 에러 핸들링 코드를 작성하는 `try?`를 사용하세요. 예를 들어, 다음의 코드는 데이터를 읽기 위한 몇가지 접근을 사용합니다. 만약 모든 접근이 실패한다면, `nil`을 리턴합니다.
 
 ```swift
 func fetchData() -> Data? {
@@ -200,21 +201,21 @@ func fetchData() -> Data? {
 }
 ```
 
-### Disabling Error Propagation
+### 에러 전파 불능화(Disabling Error Propagation)
 
-Sometimes you know a throwing function or method won’t, in fact, throw an error at runtime. On those occasions, you can write `try!` before the expression to disable error propagation and wrap the call in a runtime assertion that no error will be thrown. If an error actually is thrown, you’ll get a runtime error.
+때때로 당신은 던지기 함수나 메서드가 사실 에러를 런타임에서 던지지 않을 것임을 압니다. 이러한 경우들에 대해, 당신은 `try!`를 에러 잔파를 불가능하게 하고, 런타임에서 어떤 에러도 발생하지 않는 호출을 감싸기 위해 표현식 앞에 작성할 수 있습니다. 만약 에러가 실제로 던져진다면, 당신은 런타임 에러를 얻을 것입니다.
 
-For example, the following code uses a `loadImage(_:)` function, which loads the image resource at a given path or throws an error if the image can’t be loaded. In this case, because the image is shipped with the application, no error will be thrown at runtime, so it is appropriate to disable error propagation.
+예를 들어, 다음의 코드는 주어진 경로에서 이미지 리소스를 불러오는 또는 이미지가 불러지지 않는 경우 에러를 던지는 `loadImage(_:)` 함수를 사용합니다. 이런 경우에서, 이미지가 어플리케이션과 함께 들어가기 때문에, 실행시에 아무 에러도 발생하지 않을 것입니다. 그래서 에러 전파를 불가능하게 하는데 적절합니다.
 
 ```swift
 let photo = try! loadImage("./Resources/John Appleseed.jpg")
 ```
 
-## Specifying Cleanup Actions
+## Cleanup Actions의 명시(Specifying Cleanup Actions)
 
-You use a `defer` statement to execute a set of statements just before code execution leaves the current block of code. This statement lets you do any necessary cleanup that should be performed regardless of *how*execution leaves the current block of code—whether it leaves because an error was thrown or because of a statement such as `return` or `break`. For example, you can use a `defer` statement to ensure that file descriptors are closed and manually allocated memory is freed.
+구문의 세트를 실행하기 위해 코드의 현재 블록을 둔 채로 코드의 실행부 직전에 `defer` 구문을 사용합니다. 이 구문은 당신으로 하여금 어떻게 실행이 코드의 현재 블록을 남겨두는지에 상관없이 수행되어야만 하는 어떤 필요한 클린업을 하도록 합니다.-그것이 에러를 던지기 때문인지 혹은 `return` 또는 `break`와 같은 구문 때문인지에 관계없이. 예를 들어, 당신은 `defer` 구문을 파일 descriptor가 닫혔는지 보장하고, 수동을 할당된 메모리를 해제하기 위해 사용할 수 있습니다.
 
-A `defer` statement defers execution until the current scope is exited. This statement consists of the `defer`keyword and the statements to be executed later. The deferred statements may not contain any code that would transfer control out of the statements, such as a `break` or a `return` statement, or by throwing an error. Deferred actions are executed in reverse order of how they are specified—that is, the code in the first `defer`statement executes after code in the second, and so on.
+`defer` 구문은 현재 범위에서 나갈 때까지 실행을 미룹니다. 이 구문은 `defer` 키워드와 나중에 실행될 구문으로 구성됩니다. 미뤄진 구문은 구문의 밖으로 컨트롤을 이동하는 `break`나 `return` 구문이나 에러를 던지는 것 같은 어떤 코드도 포함하지 않습니다. 미뤄진 액션들은 그들이 명시된 방법의 역순으로 실행됩니다. -즉, 처음 `defer` 구문에 있는 코드가 두 번째 안에 있는 코드 다음에 실행되고, 이후로도 마찬가지 입니다.
 
 ```swift
 func processFile(filename: String) throws {
@@ -231,9 +232,9 @@ func processFile(filename: String) throws {
 }
 ```
 
-The above example uses a `defer` statement to ensure that the `open(_:)` function has a corresponding call to`close(_:)`.
+위의 예제는 `open(_:)` 함수가 대응되는 `close(_:)`를 호출함을 보장하기 위해  `defer` 구문을 사용하였습니다.
 
 > NOTE
 >
-> You can use a `defer` statement even when no error handling code is involved.
+> `defer` 구문은 에러 다루기가 포함되지 않을 때라도 사용할 수 있습니다.
 
