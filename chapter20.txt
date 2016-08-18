@@ -1,205 +1,240 @@
-# 20 타입 변환 (Type Casting)
-> Translator : Snowcat8436 (snowcat8436@gmail.com)
+# 20 에러 핸들링(Error Handling)
 
-## 타입변환(Type Casting)
+*에러 핸들링*은 당신의 프로그램에서 에러 조건으로부터 복구, 응답하는 과정입니다. Swift는 런타임에서 복구 가능한 에러를 던지기(throwing), 캐치(catching), 전파(propagating), 조작(manipulating)에 대한 일급 지원(first-class support)을 제공합니다.
 
-타입 변환이란 인스턴스(instance)의 타입을 체크하기 위한 방법이며, 또한 이것은 인스턴스를 마치 해당 클래스가 가친 계층구조에서 온 상위클래스나 하위클래스처럼 다룬다.
-Swift에서 타입 변환은 `is`와 `as`라는 연산자로 구현할 수 있으며, 이 두 연산자는 값의 타입을 체크하거나 다른 타입으로 변환하는 간단하고 표현적인 방법을 제공합니다.
-또한 해당 타입이 프로토콜에 적합하지 아닌지 체크하기 위해서 타입 변환을 사용할 수 있으며 보다 자세한 사항은 [Protocol Conformance](링크)를 참조하시기 바랍니다.
+몇몇 연산은 항상 완벽한 실행 또는 유용한 아웃풋을 내보내는 것이 보장되지 않습니다. 옵셔널은 값의 부재를 나타내기 위해 사용되지만, 연산이 실패할 경우, 실패의 원인을 이해하는 것이 당신의 코드가 그에 맞춰 대응하는데 종종 유용합니다.
 
-## 타입 캐스팅을 위한 클래스 계층 정의(Defining a Class Hierarchy for Type Casting)
+예를 들어, 디스크에서 파일을 읽고 처리하는 일을 고려해봅시다. 이 작업이 실패할 수 있는 원인은 파일이 특정 폴더에 존재하지 않거나, 파일 읽기 권한이 없거나, 호환되지 않는 포맷으로 인코드 되는 경우 등 많은 것들이 있습니다. 이런 다른 상황들을 구별하는 것은 프로그램이 몇몇 에러를 해결하고, 해결할 수 없는 어떤 에러에 대해 사용자와 소통하는 것을 허용합니다.
 
-당신은 특정한 클래스의 인스턴스의 타입을 체크하거나 인스턴스를 같은 계층의 또다른 클래스로 변환하기 위해서 클래스들과 하위클래스들의 계층정보를 사용한 타입캐스팅을 할 수 있다.
-아래의 세가지의 코드조각(code snippets)는 타입 캐스팅이 사용되는 예제를 보여주기 위한 계층적인 클래스들과 각각의 클래스들의 인스턴스를 포함하는 배열(array)를 정의하고 있습니다.
-첫번째 코드 조각은 `MediaItem`이라는 새로운 기본 클래스(base class)를 정의하고 있습니다. 이 클래스는 디지털 미디어 라이브러리에 있는 모든 아이템들을 위한 기본적인 기능을 제공합니다. 특히   `String` 타입의 `name` 속성(Property)를 선언하고, `init name` initializer를 통해서 초기화 합니다(이것은 모든 미디어 아이템(영화나 노래)들이 이름을 가지고 있다고 가정합니다)
+> NOTE
+>
+> Swift에서 에러 핸들링은 Cocoa와 Objective-C에서 `NSError` 클래스를 사용하는 에러 핸들링 패턴과 상호운용됩니다. 이 클래스에 대한 더 많은 정보는 [Error Handling](https://developer.apple.com/library/ios/documentation/Swift/Conceptual/BuildingCocoaApps/AdoptingCocoaDesignPatterns.html#//apple_ref/doc/uid/TP40014216-CH7-ID10)과 [Using Swift with Cocoa and Objective-C (Swift 2.2)](https://developer.apple.com/library/ios/documentation/Swift/Conceptual/BuildingCocoaApps/index.html#//apple_ref/doc/uid/TP40014216)를 참고하세요.
 
-```
-class MediaItem {
-	var name: String
-	init(name: String) {
-		self.name = name
-	}
+## 에러 던지기와 나타내기(Representing and Throwing Errors)
+
+Swift에서 에러들은 `ErrorType` 프로토콜에 일치하는 타입의 값들로 표현됩니다. 이 빈 프로토콜은 에러 핸들링에 사용될 수 있는 타입을 가리킵니다.
+
+Swift 열거형은 특히 소통되는 에러의 본질에 대한 추가적인 정보를 허용하는 관련된 값으로, 연관된 에러 조건들의 그룹을 모델링하는데 적합합니다. 예를 들어, 여기는 게임에서 자판기가 동작하는 에러 조건을 나타낼 수 있을지 모르는 방법이 있습니다.
+
+```swift
+enum VendingMachineError: ErrorType {
+    case InvalidSelection
+    case InsufficientFunds(coinsNeeded: Int)
+    case OutOfStock
 }
 ```
 
-다음 코드 조각은 `MediaItem`의 두가지 하위클래스(subclasses)들입니다. 첫번째 하위클래스인 `Moive`는 내부적으로 영화에 관한 추가적인 데이터를 가지고 있는데. 이는 `director`라는 속성 및 초기화 부분을 `MediaItem`클래스의 initalizer의 윗부분에 추가하는것으로 더할 수 있으며. 두번째 하위 클래스인 `Song`도 `artist` 속성의 관한 내용을 선언하고 base class의 윗부분에서 이를 초기화 한다:
-```
-class Movie: MediaItem { 
-	var director: String
-	init(name: String, director: String) {
-		self.director = director
-		super.init(name: name)
-	}
-}
+에러를 던지는 것은 당신으로 하여금 기대하지 않던 어떤 것이 발생하는 것을 가리키고, 실행의 일반적인 흐름이 계속되지 못하도록 합니다. 당신은 에러를 던지는데, `throw` 구문을 사용할 수 있습니다. 예를 들어, 다음의 코드는 자판기가 5개의 추가적인 동전이 필요함을 가리키는 에러를 던집니다.
 
-class Song: MediaItem {
-	var artist: String
-	init(name: String, artist: String) {
-		self.artist = artist
-		super.init(name: name)
-	}
-}
+```swift
+throw VendingMachineError.InsufficientFunds(coinsNeeded: 5)
 ```
-마지막 코드조각은 2개의 `Movie` 인스탄스와 3개의 `Song` 인스턴스를 포함하는 `library`로 불리는 상수형 배열(constant array)를 만든다.
-`library` 배열의 타입은 각각의 배열 내부의 콘텐츠를 초기화 하는 타입으로 추정할 수 있다.
-Swift의 타입 체커는 `Movie`나 `Song`이 공통의 상위 클래스(superclass)인 `MediaItem`을 가진다고 추정할 수 있고, 따라서 `library`의 타입은  `MediaItem[]`로 추정할 수 있다 :
-```
-let library = [
-	Movie(name: "Casablanca", director: "Michael Curtiz"),
-	Song(name: "Blue Suede Shoes", artist: "Elvis Presley"),
-	Movie(name: "Citizen Kane", director: "Orson Welles"),
-    Song(name: "The One And Only", artist: "Chesney Hawkes"),
-	Song(name: "Never Gonna Give You Up", artist: "Rick Astley")
-]
-// the type of "library" is inferred to be MediaItem[]
-```
-`library`에 저장된 요소들은 해당 Scenes뒤에서는 여전히 `Movie`와 `Song`인스탄스이다. 그러나 만일 네가 이 array의 컨텐츠들을 반복자 등을 이용하여 뽑아낸 다면, 네가 받게된 그 아이템들의 타입은 Song이나 Movie이 아닌 MediaItem일 것이다. 그것들을 원래의 타입으로 작업을 하기 위해얻고 싶다면, 당신은 그들의 타입을 체크하는 것이 필요하고, 또한 그들을 다운캐스트해서 다른 타입으로 변경하여야 한다. 이는 아래서 설명하도록 하겠다.
 
-## 타입 체크(Checking Type)
+## 에러 다루기(Handling Errors)
 
-어떠한 인스턴스가 확실히 하위클래스 타입인지 아닌지를 체크하기 위해서는 타입 체크 연산자인 `is`를 이용합니다. 이 타입체크용 연산자는 만일 해당 인스탄스가 해당 하위 클래스라면 `true`를, 아니라면 `false`를 반환합니다.
-아래의 예시는 `library` 배열에 있는 `Movie`의 인스턴스의 수와 `Song`의 인스턴스의 수를 세기 위한 `movieCount`와 `songCount`라는 두개의 변수를 선언하는 것을 보여줍니다.
+에러가 던져질 때, 몇몇 코드의 둘러싸인 조각이 에러를 다루는 책임을 집니다. -예를 들어, 문제를 수정함으로서, 대안의 접근을 시도함으로서, 실패를 사용자에게 알림으로서 등이 있습니다.
+
+Swift에는 에러를 다루는 네 가지 방법이 있습니다. 당신은 에러를 함수로부터 함수를 호출하는 코드로 에러를 전파할 수 있고, 에러를 `do`-`catch` 문을 사용해 다룰 수 있으며, 에러를 옵셔널 값으로서 다룰 수 있으며, 또는 에러를 발생하지 않은 것으로 주장할 수 있습니다. 각각의 접근은 아래의 섹션에 설명되어 있습니다.
+
+함수가 에러를 던질 때, 당신의 프로그램의 흐름을 바꿉니다. 그래서, 당신의 코드에서 에러를 던질 수 있는 위치를 빨리 식별할 수 있는 것이 중요합니다. 당신의 코드에서 이들 위치를 식별하기 위해, 에러를 던질 수 있는 함수나 메서드 또는 이니셜라이저 코드의 조각 앞에 `try` 키워드-혹은 `try?` 혹은 `try!` 변수-를 작성하세요. 이들 키워드는 아래의 섹션들에 기술되어 있습니다.
+
+> NOTE
+>
+> Swift에서 에러 다루기는 `try`, `catch`와 `throw` 키워드를 사용하는 다른 언어에서의 예외 다루기(exception handling)와 닮았습니다. 예외 다루기를 하는 많은 언어(Objective-C를 포함해서)와 같지 않게, Swift의 에러 다루기는 계산이 비쌀 수 있는 과정인, 스택 호출 되감기를 수반하지 않습니다. 보통 말하는, `throw` 구문의 성능 특징은 `return` 구문의 그것과 비교할만 합니다. 
+
+### 던지기 함수를 사용한 에러 전파(Propagating Errors Using Throwing Functions)
+
+에러를 던질 수 있는 함수, 메서드 또는 이니셜라이저를 가리키기 위해, 당신은 함수의 선언에, 파라메터들의 뒤에 `throws` 키워드를 작성합니다. `throws`로 마킹된 함수는 *던지기 함수(throwing function)*로 호출됩니다. 만약 함수가 리턴 타입을 명시한다면, 당신은 리턴 화살표(`->`) 앞에 `throws` 키워드를 작성합니다.
+
+```swift
+func canThrowErrors() throws -> String
+ 
+func cannotThrowErrors() -> String
 ```
-var movieCount = 0
-var songCount = 0
 
-for item in library {
-	if item is Movie {
-		++movieCount
-	} else if item is Song {
-		++songCount
-	}
-println("Media library contains \(movieCount) movies and \(songCount) songs")
-// prints "Media library contains 2 movies and 3 songs"
-```
-이 예시에서는 `library`배열의 모든 아이템에 대해서 작업하며, 각각의 1번의 과정마다 `for-in` 루프는 배열에 `MediaItem` 상수를 가져옵니다.
-각각의 아이템이 만일 `Movie` 인스탄스이면 `item is Movie`에서 `true`를 아니라면 `false`를 반환하고, 이와 유시하게 아이템이 만일 Song의 인스탄스인지 아닌지에 따라 `item is Song` 체크부분의 리턴값이 결정됩니다. `for-in` 루프의 마지막이 되면, `moveCount`와 `songCount`의 값을 보고 전체 `MediaItem` 인스탄스중에 각각의 타입이 얼마만큼의 수가 들어있는지 찾아낼 수 있다.
+던지기 함수는 그것이 호출된 곳으로부터 scope으로 그것의 내부로 던져진 에러들을 전파합니다.
 
-## 다운캐스팅( Downcasting )
+> NOTE
+>
+> 던지기 함수만이 에러를 전파할 수 있습니다. 비던지기 함수 내부에서 던져진 어떤 에러들은 반드시 함수 내부에서 다루어져야만 합니다.
 
-상수와 변수의 명확한 클래스 타입은 사실은 아마도 the scenes뒤에 있는 하위 클래스의 인스탄스에 속할것이다. 
-당신이 위와 같은 케이스를 믿는 경우, 당신은 타입 변환 연산자인 `as`를 통하여 하위클래스타입으로 다운캐스팅을 시도 할 수 있다.
-다운캐스팅은 실패할 수 있기때문에, 타입 캐스팅연산자는 두가지의 다른 형태를 가집니다.
-하나는 `as?`와 같은 연산자를 사용하는 optional form으로 다운캐스팅을 시도하여 optional value를 리턴합니다.
-다른 하나는 `as`와 같은 연산자를 사용하는 forced form으로 다운 캐스팅을 시도하고 강제로 unwrap한 결과를 한번에 합한 작업을 합니다.
-네가 만일 다운캐스트가 성공할지 확신을 가지지 못한다면 타입변환 연산자인 `as?`를 이용하는 optional form을 사용한다. 위 연산자를 사용하는 form은 항상 optional value를 리턴하며 그래서 만일 다운 캐스트가 가능하지 않은 경우에는 `nil`을 리턴할 수 있도록 할 수 있다. 이 것은 당신이 다운 캐스팅의 성공 유무를 체크할 수 있도록 하게 한다.
-오직 당신이 다운캐스트가 항상 성공할 것이라는 확신이 있다면 타입 변환 연산자인 `as`를 이용하는 forced form을 사용할 수 있다. 위의 연산자를 사용하는 form은 만일 올바르지 않은 클래스 타입으로 다운캐스팅을 시도했을 시에 런타임 에러를 발생시킨다.
-아래에 `library` 내의 각 `MediaItem`을 반복해가면서 각 아이템들을 위한 적절한 설명을 출력하는 예시를 만들었다. 이를 위해서 각 아이템이 단순히 `MediaItme`이 아닌 진정으로 `Movie`나 `Song`인지 억세스 해볼 필요가 있다. 이를 위해서 설명을 출력하기 위해서 `Movie`나 `Song`의 `director`나 `artist` 속성에 접근할수 있게 할 필요가 있다.
-예시에서 배열내의 각각의 item은 `Movie`이거나 `Song`이라고 생각된다. 당신은 각각의 아이템이 실제 어떠한 클래스인지 미리 알 수가 없습니다. 그러므로 optional form을 위한 `as?` 연산자를 사용하여 루프를 통해 각 케이스마다 다운캐스팅을 체크하는 것이 적절합니다:
-```
-for item in library {
-	if let movie = item as? Movie {
-		println("Movie: '\(movie.name)', dir. \(movie.director)")
-	} else if let song = item as? Song {
-		println("Song: '\(song.name)', by \(song.artist)")
-	}
+아래의 예제에서, `VendingMachine` 클래스는 만약 요청된 아이템이 사용가능하지 않거나, 재고가 없을 때, 또는 현재 잔금을 초과하는 가격일 때, 적절한 `VendingMachineError `를 던지는 `vend(itemNamed:)` 메서드를 가지고 있습니다.
+
+```swift
+struct Item {
+    var price: Int
+    var count: Int
 }
  
-// Movie: 'Casablanca', dir. Michael Curtiz
-// Song: 'Blue Suede Shoes', by Elvis Presley
-// Movie: 'Citizen Kane', dir. Orson Welles
-// Song: 'The One And Only', by Chesney Hawkes
-// Song: 'Never Gonna Give You Up', by Rick Astley
-```
-이 예시는 현재 아이템이 `Movie`라고 생각하고 다운 캐스팅을 시도하는 것으로 시작합니다. 아이템이 `MediaItem` 인스탄스이므로 이 아이템은 `Movie`일 수 있습니다, 또한 똑같은 이유로 `Song`도 가능합니다, 혹은 오로지 단순히 `MediaItem`일수도 있습니다. 이것이 불확실 하기 때문에, `as?` 타입변환 연산자를 사용하여 하위 클래스로의 다운캐스팅을 시도시에 optional value를 반환합니다. 그 결과 `item as Moive`의 결과는 `Move?` 타입, 즉 optional `Movie`이 됩니다.
-`library` 배열안의 두개의 `Song` 인스탄스에 해당 내용을 적용하여 `Movie`로 다운캐스팅을 할경우 실패한다.  이것에 대처하기 위해, 위의 예시에서는 결과로 나온 optional `Movie`값이 실제로 값을 가지고 있는지 체크하기 위한(이 경우는 다운캐스팅이 성공했는지 아닌지 찾는 과정이다) optional binding을 사용한다. 
-이 optional binding 은 `if let movie = is as? Moive`와 같이 적히며, 이는 다음과 같이 해석될 수 있다: "해당 아이템을 `Movie`로 생각하고 접근을 시도한다. 만일 해당 작업이 상공하면, 반환된 optional `Movie`값을 저장할 `movie`라고 불리는 새로운 임시 상수값을 설정한다.
-만일 다운 캐스팅이 성공한다면, `movie`의 속성들을 가지고 `director`와 같은 `Moive` 인스탄스를 위한 설명을 출력하는데 사용할 수 있습니다. 
-비슷한 원리로 `Song` 인스턴스를 위한 체크를 하여, `library`에서 `Song` 인스탄스를 찾기만 한다면, `artist`와 같은 적절한 설명을 출력할 수 있습니다.
-
->NOTE
-변환(Casting)은 실제로 해당 인스턴스를 수정하거나 그 값을 바꾸는 것이 아닙니다. 근본적인 인스턴스는 처음상태 그대로 남아있습니다. 이것은 간단히 특별한 것이며, 캐스팅된 타입의 인스턴스로서 접근이 가능한 것입니다.
-
-## Type Casting for Any and AnyObject
-
-Swift는 특정한 타입을 가지지 않는 상태로 작업하기 위한 두가지의 특별한 타입을 제공합니다:
-
-`AnyObject`는 어떠한 클래스타입의 인스턴스라도 표현할 수 있습니다
-`Any`는 함수형의 타입을 제외하고는 어떠한 타입의 인스턴스라도 표현할 수 있습니다.
-
->NOTE
-`Any`나 `AnyObject`는 오로지 당신이 명시적으로 behavior나 그들이 제공하는 능력들이 필요한 경우에만 사용합니다. 이는 항상 당신의 코드 속에서당신이 예상한 특정한 형태의 타입으로 작동하는 것이 더 낫습니다.
-
-## AnyObject
-
-Cocoa APIS를 이용하여 작업을 할때, 보통 `AnyObject`[] 타입의 배열을(`AnyObject` 타입의 값을 가진 배열) 받는것이 일반적입니다. 이것은 Objective-C가 명시적인 타입의 배열을 가지지 못하기 때문입니다. 그러나 당신이 종종  당신이 알고있는 API가 제공하는 배열을 포함한 여러가지 정보를 포함한 오브젝트들의 타입에 대해서 자신이 있을 수 있다.
-이러한 상황에서, 당신은 optional unwrapping이 필요하지 않은 경우에 한하여 배열의 각각의 아이템을 특정한 클래스의 타입으로 바꾸는 다운캐스팅을하기 위한 타입 변환 연산자 `as`로 강제로 변경한 형태를 사용할 수 있습니다.
-```
-let someObjects: AnyObject[] = [
-	Movie(name: "2001: A Space Odyssey", director: "Stanley Kubrick"),
-	Movie(name: "Moon", director: "Duncan Jones"),
-	Movie(name: "Alien", director: "Ridley Scott")
-]
-```
-이 배열은 오로지 `Moive` 인스턴스만 가지는 것을 이미 알고 있으므로, 당신은 다운캐스팅 및 타입 변환 연산자 `as`를 이용하여 non-optional `Moive`로 강제로 형태를 바꾸는 unwrap를 할 수 있습니다.
-```
-for object in someObjects {
-	let movie = object as Movie
-	println("Movie: '\(movie.name)', dir. \(movie.director)")
-}
-// Movie: '2001: A Space Odyssey', dir. Stanley Kubrick
-// Movie: 'Moon', dir. Duncan Jones
-// Movie: 'Alien', dir. Ridley Scott
-```
-루프를 조금더 짧게 만들기 위해서, 각 아이템을 다운캐스팅하는 대신에 `someObjects` 배열을 `Movie[]` 타입으로 다운 캐스팅 할 수도 있습니다:
-```
-for movie in someObjects as Movie[] {
-	println("Movie: '\(movie.name)', dir. \(movie.director)")
-}
-// Movie: '2001: A Space Odyssey', dir. Stanley Kubrick
-// Movie: 'Moon', dir. Duncan Jones// Movie: 'Alien', dir. Ridley Scott
-```
-
-## Any
-
-이곳에 non-class타입을 포함한 여러가지 다른 타입을 섞어서 작업하기 위한 `Any`를 사용한 예제가 있다. 이 예제는 `Any`타입의 값을 저장할 수 있는 `things`이라는 한 배열을 생성한다.
-```
-var things = Any[]()
- 
-things.append(0)
-things.append(0.0)
-things.append(42)
-things.append(3.14159)
-things.append("hello")
-things.append((3.0, 5.0))
-things.append(Movie(name: "Ghostbusters", director: "Ivan Reitman"))
-```
-`things`배열은 두개의 `int` 값, 두개의 `Double`값, 하나의 `String`값, 하나의 (`Double`,`Double`)타입의 tuple, 그리고 "Ghostbusters"의 name과 "Ivan Retiman"의 director속성을 가진 Moive를 한개 가지고 있다.
-당신은 `Any`나 `AnyObject`로 알고있는 변수에서 특정한 타입의 상수나 변수 찾기 위한 스위치 구문의 `case` 항목에 `is`와 `as` 연산자를 사용할수 있습니다.
-아래의 예제는 아이템들의 `things` 배열의 각 아이템을 반복하면서 스위치 문을 통해서 각각의 타입을 요청한다.
-몇몇의 `switch`문의 `case`항목에서 비교항목과 동일한 값과 타입을 가지는 상수의 경우는 해당 값과 형태를 출력한다:
-```
-for thing in things {
-    switch thing {
-    case 0 as Int:
-        println("zero as an Int")
-    case 0 as Double:
-        println("zero as a Double")
-    case let someInt as Int:
-        println("an integer value of \(someInt)")
-    case let someDouble as Double where someDouble > 0:
-        println("a positive double value of \(someDouble)")
-    case is Double:
-        println("some other double value that I don't want to print")
-    case let someString as String:
-        println("a string value of \"\(someString)\"")
-    case let (x, y) as (Double, Double):
-        println("an (x, y) point at \(x), \(y)")
-    case let movie as Movie:
-        println("a movie called '\(movie.name)', dir. \(movie.director)")
-    default:
-        println("something else")
+class VendingMachine {
+    var inventory = [
+        "Candy Bar": Item(price: 12, count: 7),
+        "Chips": Item(price: 10, count: 4),
+        "Pretzels": Item(price: 7, count: 11)
+    ]
+    var coinsDeposited = 0
+    func dispenseSnack(snack: String) {
+        print("Dispensing \(snack)")
+    }
+    
+    func vend(itemNamed name: String) throws {
+        guard let item = inventory[name] else {
+            throw VendingMachineError.InvalidSelection
+        }
+        
+        guard item.count > 0 else {
+            throw VendingMachineError.OutOfStock
+        }
+        
+        guard item.price <= coinsDeposited else {
+            throw VendingMachineError.InsufficientFunds(coinsNeeded: item.price - coinsDeposited)
+        }
+        
+        coinsDeposited -= item.price
+        
+        var newItem = item
+        newItem.count -= 1
+        inventory[name] = newItem
+        
+        dispenseSnack(name)
     }
 }
- 
-// zero as an Int
-// zero as a Double
-// an integer value of 42
-// a positive double value of 3.14159
-// a string value of "hello"
-// an (x, y) point at 3.0, 5.0
-// a movie called 'Ghostbusters', dir. Ivan Reitman
 ```
 
->NOTE
-`switch`문의 `case`항목들은 체크 및 특정한 타입으로의 변환을 위해서 `as`나 `as?`를 통해서 강제로 변경된 형태를 사용한다. 이런 체크는 `switch`문의 문맥안에 있는 이상 항상 안전하다. 
+`vend(itemNamed:)` 메서드의 구현은 만약 스낵을 구입하는 요구사항 중 어떤 것이 맞지 않는다면, 메서드를 일찍 나가서 적절한 에러를 던지기 위해 `guard` 구문을 사용합니다. `throw` 구문이 즉시 프로그램 컨트롤을 이동시키기에, 아이템은 모든 요구사항이 맞는 경우에만 자판기에서 나올 것입니다.
+
+`vend(itemNamed:)` 메서드가 그것이 던지는 어떠한 에러라도 전파시키기 때문에, 이 메서드를 호출하는 어떤 코드라도 -`do`-`catch` 구문이나 `try?` 혹은 `try!`를 사용해서- 이 에러들을 다루거나 계속해서 에러들을 전파시켜야만 합니다. 예를 들어, 아래의 예제에서 `buyFavoriteSnack(_:vendingMachine:)`는 또한 던지기 함수이고, `vend(itemNamed:)` 메서드가 던지는 어떠한 에러라도 `buyFavoriteSnack(_:vendingMachine:)` 함수가 호출된 곳으로 전파될 것입니다.
+
+```swift
+let favoriteSnacks = [
+    "Alice": "Chips",
+    "Bob": "Licorice",
+    "Eve": "Pretzels",
+]
+
+func buyFavoriteSnack(person: String, vendingMachine: VendingMachine) throws {
+    let snackName = favoriteSnacks[person] ?? "Candy Bar"
+    try vendingMachine.vend(itemNamed: snackName)
+}
+```
+
+이 예제에서, `buyFavoriteSnack(_:vendingMachine:)` 함수는 주어진 사람의 가장 좋아하는 스낵을 찾고, `vend(itemNamed:)` 메서드를 호출함으로서 그것들을 사는 것을 시도합니다. `vend(itemNamed:)` 메서드가 에러를 던질 수 있기에, 앞에 `try` 키워드를 붙여서 호출해야 합니다.
+
+던지기 이니셜라이저는 에러들을 던지기 함수와 같은 방식으로 전파할 수 있습니다. 예를 들어, 아래에 리스트되어 있는 `PurchasedSnack` 구조체의 이니셜라이저는 던지기 함수를 초기화 과정의 일부로서 호출합니다. 그리고 그것의 호출자로부터 그것들을 전파함으로서 맞닥드려 어떠한 에러라도 다룹니다.
+
+```swift
+struct PurchasedSnack {
+    let name: String
+    init(name: String, vendingMachine: VendingMachine) throws {
+        try vendingMachine.vend(itemNamed: name)
+        self.name = name
+    }
+}
+```
+
+### Do-Catch를 사용한 에러다루기(Handling Errors Using Do-Catch)
+
+코드 블록을 실행함으로서 에러를 다루기 위해  `do`-`catch`를 사용합니다. 만약 에러가 `do` 클로저 안에서 코드에 의해 던져졌다면, 그들 중 에러를 다룰 것을 결정하기 위해 대응되는 `catch` 클로저에서 매칭시킵니다.
+
+여기에 `do`-`catch` 구문의 일반적인 형태가 있습니다.
+
+```swift
+do {
+    try expression
+    statements
+} catch pattern 1 {
+    statements
+} catch pattern 2 where condition {
+    statements
+}
+```
+
+어떤 에러를 클로저에서 다룰 수 있는지 가리키기 위해 `catch` 이후에 패턴을 작성할 수 있습니다. 만약 `catch` 클로저가 패턴을 갖지 않는 경우, 클로저는 어떠한 에러와도 매칭되지 않는 것이고, `error`라는 로컬 상수로 에러를 묶습니다. 패턴 매칭에 대한 더 많은 정보는 [Patterns](https://developer.apple.com/library/ios/documentation/Swift/Conceptual/Swift_Programming_Language/Patterns.html#//apple_ref/doc/uid/TP40014097-CH36-ID419)를 참고하세요.
+
+`catch` 클로저는 그것의 `do` 클로저가 던지는 모든 가능한 에러를 다룰 필요는 없습니다. 만약 `catch` 클로저에서 에러를 다룰 수 없다면, 에러는 둘러싼 범위로 전파됩니다. 하지만, 에러는 주변의 어떤 범위에서 다루어져야만 합니다.- 에러를 다루는 `do`-`catch` 클로저에 의해서 감싸짐으로서 아니면, 던지기 함수 내부에 그것을 넣음으로써. 예를 들어, 다음의 코드는 `VendingMachineError` 열거형의 모든 세 경우를 다룹니다. 하지만 모든 다른 에러들은 둘러싼 범위에서 다루어져야만 합니다.
+
+```swift
+var vendingMachine = VendingMachine()
+vendingMachine.coinsDeposited = 8
+do {
+    try buyFavoriteSnack("Alice", vendingMachine: vendingMachine)
+} catch VendingMachineError.InvalidSelection {
+    print("Invalid Selection.")
+} catch VendingMachineError.OutOfStock {
+    print("Out of Stock.")
+} catch VendingMachineError.InsufficientFunds(let coinsNeeded) {
+    print("Insufficient funds. Please insert an additional \(coinsNeeded) coins.")
+}
+// Prints "Insufficient funds. Please insert an additional 2 coins."
+```
+
+위의 예제에서, `buyFavoriteSnack(_:vendingMachine:)` 함수는 그것이 에러를 던질 수 있기 때문에 `try` 표현식에서 호출되었습니다. 만약 에러가 던져진다면, 실행은 즉시 계속해서 전파를 허용하는 것을 결정하는 `catch` 클로저로 옮겨집니다. 만약 에러가 발생하지 않는다면, `do` 구문에서 나머지 구문들이 수행됩니다.
+
+### 에러를 옵셔널 값으로 전환하기(Converting Errors to Optional Values)
+
+`try?`를 에러를 옵셔널 값으로 전환함으로서 에러를 다루기 위해 사용할 수 있습니다. 만약 `try?` 표현식을 평가하던 도중에 에러가 던져진다면, 표현식의 값은 `nil`입니다. 예를 들어, 다음의 코드에서, `x`와 `y`는 같은 값과 행위를 가집니다.
+
+```swift
+func someThrowingFunction() throws -> Int {
+    // ...
+}
+ 
+let x = try? someThrowingFunction()
+ 
+let y: Int?
+do {
+    y = try someThrowingFunction()
+} catch {
+    y = nil
+}
+```
+
+만약 `someThrowingFunction()`이 에러를 던진다면, `x`와 `y`의 값은 `nil`이 될 것입니다. 그렇지 않으면 `x`와 `y`의 값은 함수가 리턴하는 값입니다. `x`와 `y`는 `someThrowingFunction()`이 돌려주는 타입의 옵셔널임을 명심하세요. 여기서 그 함수가 integer를 리턴하므로, `x`와 `y`의 값은 옵셔널 integer입니다.
+
+만약 당신이 모든 에러를 같은 방식으로 다루기를 원할 때, 축약 에러 핸들링 코드를 작성하는 `try?`를 사용하세요. 예를 들어, 다음의 코드는 데이터를 읽기 위한 몇가지 접근을 사용합니다. 만약 모든 접근이 실패한다면, `nil`을 리턴합니다.
+
+```swift
+func fetchData() -> Data? {
+    if let data = try? fetchDataFromDisk() { return data }
+    if let data = try? fetchDataFromServer() { return data }
+    return nil
+}
+```
+
+### 에러 전파 불능화(Disabling Error Propagation)
+
+때때로 당신은 던지기 함수나 메서드가 사실 에러를 런타임에서 던지지 않을 것임을 압니다. 이러한 경우들에 대해, 당신은 `try!`를 에러 잔파를 불가능하게 하고, 런타임에서 어떤 에러도 발생하지 않는 호출을 감싸기 위해 표현식 앞에 작성할 수 있습니다. 만약 에러가 실제로 던져진다면, 당신은 런타임 에러를 얻을 것입니다.
+
+예를 들어, 다음의 코드는 주어진 경로에서 이미지 리소스를 불러오는 또는 이미지가 불러지지 않는 경우 에러를 던지는 `loadImage(_:)` 함수를 사용합니다. 이런 경우에서, 이미지가 어플리케이션과 함께 들어가기 때문에, 실행시에 아무 에러도 발생하지 않을 것입니다. 그래서 에러 전파를 불가능하게 하는데 적절합니다.
+
+```swift
+let photo = try! loadImage("./Resources/John Appleseed.jpg")
+```
+
+## Cleanup Actions의 명시(Specifying Cleanup Actions)
+
+구문의 세트를 실행하기 위해 코드의 현재 블록을 둔 채로 코드의 실행부 직전에 `defer` 구문을 사용합니다. 이 구문은 당신으로 하여금 어떻게 실행이 코드의 현재 블록을 남겨두는지에 상관없이 수행되어야만 하는 어떤 필요한 클린업을 하도록 합니다.-그것이 에러를 던지기 때문인지 혹은 `return` 또는 `break`와 같은 구문 때문인지에 관계없이. 예를 들어, 당신은 `defer` 구문을 파일 descriptor가 닫혔는지 보장하고, 수동을 할당된 메모리를 해제하기 위해 사용할 수 있습니다.
+
+`defer` 구문은 현재 범위에서 나갈 때까지 실행을 미룹니다. 이 구문은 `defer` 키워드와 나중에 실행될 구문으로 구성됩니다. 미뤄진 구문은 구문의 밖으로 컨트롤을 이동하는 `break`나 `return` 구문이나 에러를 던지는 것 같은 어떤 코드도 포함하지 않습니다. 미뤄진 액션들은 그들이 명시된 방법의 역순으로 실행됩니다. -즉, 처음 `defer` 구문에 있는 코드가 두 번째 안에 있는 코드 다음에 실행되고, 이후로도 마찬가지 입니다.
+
+```swift
+func processFile(filename: String) throws {
+    if exists(filename) {
+        let file = open(filename)
+        defer {
+            close(file)
+        }
+        while let line = try file.readline() {
+            // Work with the file.
+        }
+        // close(file) is called here, at the end of the scope.
+    }
+}
+```
+
+위의 예제는 `open(_:)` 함수가 대응되는 `close(_:)`를 호출함을 보장하기 위해  `defer` 구문을 사용하였습니다.
+
+> NOTE
+>
+> `defer` 구문은 에러 다루기가 포함되지 않을 때라도 사용할 수 있습니다.
+
